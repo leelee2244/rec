@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>レシピ管理アプリ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="logo">R</div>
+            <h1>レシピ管理</h1>
+        </div>
+        <button id="btnNew" class="btn">レシピを追加</button>
+    </header>
+
+    <main>
+        <div class="topbar">
+            <input type="text" id="inputSearch" class="search" placeholder="タイトル、食材、タグで検索...">
+            <select id="selectSort">
+                <option value="newest">新しい順</option>
+                <option value="recommended">評価が高い順</option>
+                <option value="title">タイトル順</option>
+            </select>
+        </div>
+
+        <div id="list" class="grid">
+            </div>
+    </main>
+
+    <footer>
+        <p class="small">© 2025 Recipe Manager</p>
+    </footer>
+
+    <div id="modal" class="modal-backdrop">
+        <div class="modal">
+            <h2 id="modalTitle">レシピを追加</h2>
+            <form id="recipeForm" enctype="multipart/form-data">
+                
+                <div class="form-grid">
+                    <div class="wide" style="margin: 0; padding: 0;">
+                        <label for="fTitle">タイトル</label>
+                        <input id="fTitle" name="title" required />
+                    </div><div class="wide" style="margin: 0; padding: 0;">
+                        <label for="fRating">評価 (0.0～5.0)</label>
+                        <input id="fRating" name="rating" type="number" step="0.1" min="0" max="5" value="0.0" />
+                    </div><div class="wide" style="margin: 0; padding: 0;">
+                        <label for="fIngredients">食材 (1行に1つの食材)</label>
+                        <textarea id="fIngredients" name="ingredients"></textarea>
+                    </div><div class="wide" style="margin: 0; padding: 0;">
+                        <label for="fSteps">作り方</label>
+                        <textarea id="fSteps" name="steps" required></textarea>
+                    </div><div class="wide" style="margin: 0; padding: 0;">
+                        <label for="fTags">タグ (カンマ区切り)</label>
+                        <input id="fTags" name="tags" />
+                    </div><div class="wide" style="margin: 0; padding: 0;">
+                        <label for="fImages">写真</label>
+                        <input id="fImages" name="images" type="file" accept="image/*" multiple />
+                        <div id="imagePreview" class="image-preview">
+                            </div>
+                    </div>
+                </div>
+                <div class="card-buttons" style="margin-top: 20px;">
+                    <button type="button" id="btnCancel" class="btn ghost">キャンセル</button>
+                    <button type="submit" class="btn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
