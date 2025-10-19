@@ -30,6 +30,7 @@ form.onsubmit = async (e) => {
     const saveButton = form.querySelector('button[type="submit"]');
     
     try {
+        // 処理開始
         saveButton.disabled = true;
         saveButton.textContent = "保存中...";
 
@@ -41,6 +42,7 @@ form.onsubmit = async (e) => {
         
         recipe.rating = Number(recipe.rating); 
 
+        // ★★★ 修正: リサイズ処理を含む getImages の完了を待つ ★★★
         recipe.images = await getImages(fImages.files);
         
         if (editingIndex !== null) {
@@ -53,10 +55,12 @@ form.onsubmit = async (e) => {
         saveRecipe(recipe);
         
     } catch (error) {
+        // エラー発生時の処理（フリーズ防止）
         console.error("レシピ保存中にエラーが発生しました:", error);
-        alert("レシピの保存に失敗しました。\n大きな画像ファイルを使用している場合は、ファイルサイズを小さくしてから再度お試しください。");
+        alert("レシピの保存に失敗しました。\n画像の読み込みまたはリサイズ処理でエラーが発生しました。");
         
     } finally {
+        // 処理終了（エラーの有無に関わらずボタンをリセット）
         saveButton.disabled = false;
         saveButton.textContent = "保存";
     }
@@ -67,25 +71,53 @@ form.onsubmit = async (e) => {
 // ==========================================================
 
 /**
- * 画像ファイルをBase64文字列に変換する非同期関数
+ * 画像をリサイズし、Base64形式で返す非同期関数 (新規追加)
+ * この関数が画像を縮小し、保存データ量を減らします。
+ */
+function resizeImageAndGetBase64(file, maxWidth = 800) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // 最大幅を超えていたらリサイズ
+                if (width > maxWidth) {
+                    height = height * (maxWidth / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // JPEG形式、圧縮率0.8でBase64文字列に変換して解決
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = (error) => reject(new Error("画像読み込みエラー (Image Element)"));
+            img.src = event.target.result;
+        };
+        reader.onerror = (error) => reject(new Error("ファイル読み込みエラー (FileReader)"));
+        reader.readAsDataURL(file);
+    });
+}
+
+
+/**
+ * 画像ファイルをBase64文字列に変換する非同期関数 (リサイズ関数を呼び出すように変更)
  */
 async function getImages(files) {
     if (files.length === 0) return [];
     
     return Promise.all(
         Array.from(files).map(file => {
-            return new Promise((resolve, reject) => { 
-                const reader = new FileReader();
-                
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = (error) => {
-                    console.error("ファイルの読み込み中にエラー:", file.name, error);
-                    reject(new Error(`ファイル読み込みエラー: ${file.name}`)); 
-                };
-                reader.onabort = () => reject(new Error(`ファイル読み込みがキャンセルされました: ${file.name}`));
-
-                reader.readAsDataURL(file);
-            });
+            // ★★★ resizeImageAndGetBase64 を呼び出す ★★★
+            return resizeImageAndGetBase64(file, 800);
         })
     );
 }
@@ -203,7 +235,7 @@ function render() {
         const card = document.createElement("div");
         card.className = "card";
         
-        // ★★★ 修正: 画像の描画ロジックを再追加 ★★★
+        // ★★★ レシピ一覧に画像を再表示するロジック ★★★
         if (r.images?.length) {
             const imgs = document.createElement("div");
             imgs.className = "card-images";
