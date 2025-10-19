@@ -23,39 +23,43 @@ selectSort.addEventListener("change", render);
 
 /**
  * フォーム送信処理 (非同期化)
- * ★★★ 修正: 画像処理の完了を待ってから保存する ★★★
  */
 form.onsubmit = async (e) => {
-    e.preventDefault(); // デフォルトのフォーム送信を停止
+    e.preventDefault(); 
     
-    // 保存ボタンを一時的に無効化して二重送信を防ぎ、処理中であることを示す
     const saveButton = form.querySelector('button[type="submit"]');
-    saveButton.disabled = true;
-    saveButton.textContent = "保存中...";
-
-    const data = new FormData(form);
-    const recipe = Object.fromEntries(data.entries());
-
-    recipe.ingredients = recipe.ingredients.split("\n").filter(Boolean);
-    recipe.tags = recipe.tags.split(",").map(t => t.trim()).filter(Boolean);
     
-    recipe.rating = Number(recipe.rating); 
+    try {
+        saveButton.disabled = true;
+        saveButton.textContent = "保存中...";
 
-    // ★★★ 非同期関数 getImages の完了を await で待つ ★★★
-    recipe.images = await getImages(fImages.files);
-    
-    if (editingIndex !== null) {
-        const existing = recipes[editingIndex];
-        recipe.created = existing.created;
-        recipe.formattedDate = existing.formattedDate;
-        recipe.cookedCount = existing.cookedCount || 0;
+        const data = new FormData(form);
+        const recipe = Object.fromEntries(data.entries());
+
+        recipe.ingredients = recipe.ingredients.split("\n").filter(Boolean);
+        recipe.tags = recipe.tags.split(",").map(t => t.trim()).filter(Boolean);
+        
+        recipe.rating = Number(recipe.rating); 
+
+        recipe.images = await getImages(fImages.files);
+        
+        if (editingIndex !== null) {
+            const existing = recipes[editingIndex];
+            recipe.created = existing.created;
+            recipe.formattedDate = existing.formattedDate;
+            recipe.cookedCount = existing.cookedCount || 0;
+        }
+
+        saveRecipe(recipe);
+        
+    } catch (error) {
+        console.error("レシピ保存中にエラーが発生しました:", error);
+        alert("レシピの保存に失敗しました。\n大きな画像ファイルを使用している場合は、ファイルサイズを小さくしてから再度お試しください。");
+        
+    } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = "保存";
     }
-
-    saveRecipe(recipe);
-
-    // 処理が完了したらボタンを元に戻す
-    saveButton.disabled = false;
-    saveButton.textContent = "保存";
 };
 
 // ==========================================================
@@ -64,18 +68,22 @@ form.onsubmit = async (e) => {
 
 /**
  * 画像ファイルをBase64文字列に変換する非同期関数
- * ★★★ 修正: Promiseの解決を確実にする ★★★
  */
 async function getImages(files) {
     if (files.length === 0) return [];
     
-    // Promise.all を使用して全ての画像の読み込みを並行処理し、完了を待つ
     return Promise.all(
         Array.from(files).map(file => {
-            return new Promise((resolve, reject) => { // rejectも追加
+            return new Promise((resolve, reject) => { 
                 const reader = new FileReader();
+                
                 reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error); // エラー処理も追加
+                reader.onerror = (error) => {
+                    console.error("ファイルの読み込み中にエラー:", file.name, error);
+                    reject(new Error(`ファイル読み込みエラー: ${file.name}`)); 
+                };
+                reader.onabort = () => reject(new Error(`ファイル読み込みがキャンセルされました: ${file.name}`));
+
                 reader.readAsDataURL(file);
             });
         })
@@ -125,7 +133,7 @@ function editRecipe(index) {
     form.fTags.value = r.tags.join(", ");
     
     imagePreview.innerHTML = "";
-    if (r.images && r.images.length > 0) { // r.imagesがnull/undefinedの場合も考慮
+    if (r.images && r.images.length > 0) { 
         r.images.forEach(src => {
             const img = document.createElement("img");
             img.src = src;
@@ -195,6 +203,18 @@ function render() {
         const card = document.createElement("div");
         card.className = "card";
         
+        // ★★★ 修正: 画像の描画ロジックを再追加 ★★★
+        if (r.images?.length) {
+            const imgs = document.createElement("div");
+            imgs.className = "card-images";
+            r.images.forEach(src => {
+                const img = document.createElement("img");
+                img.src = src;
+                imgs.appendChild(img);
+            });
+            card.appendChild(imgs);
+        }
+        
         const title = document.createElement("h3");
         title.textContent = r.title;
         const tags = document.createElement("div");
@@ -257,7 +277,7 @@ function closeModal() {
     imagePreview.innerHTML = "";
     document.getElementById("modalTitle").textContent = "レシピを追加";
     editingIndex = null;
-    // モーダルを閉じる際に、保存ボタンの状態もリセットする
+    
     const saveButton = form.querySelector('button[type="submit"]');
     saveButton.disabled = false;
     saveButton.textContent = "保存";
